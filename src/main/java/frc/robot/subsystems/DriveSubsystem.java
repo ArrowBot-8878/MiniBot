@@ -4,16 +4,20 @@
 
 package frc.robot.subsystems;
 
-import com.kauailabs.navx.frc.AHRS;
+
 import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
-import com.pathplanner.lib.util.PIDConstants;
-import com.pathplanner.lib.util.ReplanningConfig;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import com.studica.frc.AHRS;
+import com.studica.frc.AHRS.NavXComType;
+
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.MecanumDriveWheelSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
@@ -62,7 +66,9 @@ public class DriveSubsystem extends SubsystemBase {
 
 
   //Isaac: comment out which ever one you are not using, the top one is the micro and the bottom one is the mxp
- private final AHRS ahrs = new AHRS(SerialPort.Port.kUSB); //Micro
+//  private final AHRS ahrs = new AHRS(SerialPort.Port.kUSB); //Micro
+ private final AHRS ahrs = new AHRS(NavXComType.kMXP_SPI); //NavX2
+ private RobotConfig config;
   //private final AHRS ahrs = new AHRS(SPI.Port.kMXP, (byte) 200); //NavX2
   
   // Slew rate filter variables for controlling lateral acceleration
@@ -385,22 +391,33 @@ public class DriveSubsystem extends SubsystemBase {
     return -ahrs.getAngle();
   }
 
-  public void configurAutoBuilder(){
-        AutoBuilder.configureHolonomic(
-                this::getPose, // Robot pose supplier
-                this::resetOdometry, // Method to reset odometry (will be called if your auto has a starting pose)
-                this::getRobotRelativeSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-                this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds
-                new HolonomicPathFollowerConfig( // HolonomicPathFollowerConfig, this should likely live in your Constants class
-                        new PIDConstants(5.0, 0.0, 0.0), // Translation PID constants
-                        new PIDConstants(5.0, 0.0, 0.0), // Rotation PID constants
-                        4.5, // Max module speed, in m/s
-                        0.4, // Drive base radius in meters. Distance from robot center to furthest module.
-                        new ReplanningConfig() // Default path replanning config. See the API for the options here
-                ),
-                this::getIsFieldFlipped,
-                this // Reference to this subsystem to set requirements
-        );
+  private void configureAutoBuilder() {
+    try {
+      config = RobotConfig.fromGUISettings();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    AutoBuilder.configure(
+    this::getPose, 
+    this::resetOdometry,
+    this::getRobotRelativeSpeeds,
+    (speeds, feedorwards) -> {
+      driveRobotRelative(speeds);
+    },
+    new PPHolonomicDriveController(
+      new PIDConstants(5, 0.0, 0.0), 
+      new PIDConstants(5, 0.0, 0.0)
+    ),
+    config,
+    () -> {
+      var alliance = DriverStation.getAlliance();
+      if (alliance.isPresent()) {
+        return alliance.get() == DriverStation.Alliance.Red;
+      }
+      return false;
+    },
+    this);
   }
 }
 
