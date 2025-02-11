@@ -67,7 +67,7 @@ public class DriveSubsystem extends SubsystemBase {
 
   //Isaac: comment out which ever one you are not using, the top one is the micro and the bottom one is the mxp
 //  private final AHRS ahrs = new AHRS(SerialPort.Port.kUSB); //Micro
- private final AHRS ahrs = new AHRS(NavXComType.kMXP_SPI); //NavX2
+ private final AHRS ahrs = new AHRS(NavXComType.kUSB1); //NavX2
  private RobotConfig config;
   //private final AHRS ahrs = new AHRS(SPI.Port.kMXP, (byte) 200); //NavX2
   
